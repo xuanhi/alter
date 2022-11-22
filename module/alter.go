@@ -26,3 +26,20 @@ type Notification struct {
 	ExternalURL       string            `json:"externalURL"`
 	Alerts            []Alert           `json:"alerts"`
 }
+
+// 飞书通知模板
+type AlterContent struct {
+	Config   map[string]bool          `json:"config"`
+	Header   map[string]interface{}   `json:"header"`
+	Elements []map[string]interface{} `json:"elements"`
+}
+
+type AlterCon struct {
+	Tag     string `json:"tag"`
+	Content string `json:"content"`
+}
+
+type AlterTex struct {
+	Tag  string   `json:"tag"`
+	Text AlterCon `json:"text"`
+}

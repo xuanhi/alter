@@ -7,9 +7,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.xuanhi/alter/module"
 	"github.xuanhi/alter/utils/zaplog"
+	"go.uber.org/zap"
 )
 
 // APIPath
@@ -59,50 +61,50 @@ func GetTenantAccessToken(ctx context.Context) (string, error) {
 	return tokenResp.TenantAccessToken, nil
 }
 
-//获取机器人所在群的chart_id
-func GetChatIdByfirst(ctx context.Context) (string, error) {
+// 获取机器人所在群的chart_id,只返回第一个
+func GetChatIdByfirst(ctx context.Context) string {
 	token, err := GetTenantAccessToken(ctx)
 	if err != nil {
 		zaplog.Sugar.Errorln("failed to get tenant access token", err)
-		return "", err
+		return ""
 	}
 	cli := &http.Client{}
 
 	req, err := http.NewRequest("GET", GetChatId, nil)
 	if err != nil {
 		zaplog.Sugar.Errorln("get chatid failed", err)
-		return "", err
+		return ""
 	}
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	resp, err := cli.Do(req)
 	if err != nil {
 		zaplog.Sugar.Errorln("获取群id失败", err)
-		return "", err
+		return ""
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		zaplog.Sugar.Errorln("读取resp body 失败", err)
-		return "", err
+		return ""
 	}
 
 	ChatIdDatas := &module.ChatIdDatas{}
 	err = json.Unmarshal(body, ChatIdDatas)
 	if err != nil {
 		zaplog.Sugar.Errorln("json 解析错误", err)
-		return "", err
+		return ""
 	}
 	if ChatIdDatas.Code != 0 {
 		zaplog.Sugar.Warnf("没能获取到群id,code:%v,msg:%v", ChatIdDatas.Code, ChatIdDatas.Msg)
 	}
 
 	zaplog.Sugar.Infof("获取到chat_id数组,返回第一个chat_id : %v -- 群名字: %v", ChatIdDatas.Data.Items[0].Chat_id, ChatIdDatas.Data.Items[0].Name)
-	return ChatIdDatas.Data.Items[0].Chat_id, nil
+	return ChatIdDatas.Data.Items[0].Chat_id
 }
 
-//发送告警消息
-func SendAlterMsg(ctx context.Context, chatID string) (*module.MessageItem, error) {
+// 发送告警消息
+func SendAlterMsg(ctx context.Context, chatID, altermsg string) (*module.MessageItem, error) {
 	token, err := GetTenantAccessToken(ctx)
 	if err != nil {
 		zaplog.Sugar.Errorln("failed to get tenant access token", err)
@@ -116,8 +118,8 @@ func SendAlterMsg(ctx context.Context, chatID string) (*module.MessageItem, erro
 		MsgType   string `json:"msg_type"`
 	}{
 		ReceiveID: chatID,
-		Content:   "{\"text\": \"xhh test content \"}",
-		MsgType:   "text",
+		Content:   altermsg,
+		MsgType:   "interactive",
 	}
 
 	reqBytes, err := json.Marshal(MessageReques)
@@ -168,4 +170,68 @@ func SendAlterMsg(ctx context.Context, chatID string) (*module.MessageItem, erro
 	}
 	zaplog.Sugar.Infof("succeed create message, msg_id: %v", createMessageResp.Data.MessageID)
 	return createMessageResp.Data, nil
+}
+
+// 告警消息卡片制作
+func AlterMsgCard(altermsg module.Notification, id int) (string, error) {
+	headconfig := map[string]bool{
+		"wide_screen_mod": true,
+	}
+	headconfig2 := map[string]interface{}{
+		"template": "red",
+		"title": module.AlterCon{
+			Content: fmt.Sprintf("🔺%s  alertname:%s", altermsg.Alerts[id].Status, altermsg.Alerts[id].Labels["alertname"]),
+			Tag:     "plain_text",
+		},
+	}
+	// var lablecontent []string
+	// for k, v := range altermsg.Alerts[id].Labels {
+	// 	lablecontent = append(lablecontent, fmt.Sprintf("%s: %s", k, v))
+	// 	lablecontent=fmt.Sprintf("%s: %s\n",k,v)
+	// }
+
+	headconfig3 := []map[string]interface{}{
+		{
+			"tag": "hr",
+		}, {
+			"tag": "div",
+			"text": module.AlterCon{
+				Tag: "lark_md",
+				Content: fmt.Sprintf("**当前时间：%s**\n**告警类型**: %s\n**告警级别**: %s\n**故障节点**: %s",
+					time.Now().Format("2006-01-02 15:04:05"), altermsg.Alerts[id].Labels["alertname"], altermsg.Alerts[id].Labels["severity"], altermsg.Alerts[id].Labels["instance"]),
+			},
+		}, {
+			"tag": "hr",
+		}, {
+			"tag": "div",
+			"text": module.AlterCon{
+				Tag: "lark_md",
+				//				Content: strings.Join(lablecontent, "\n"),
+				Content: fmt.Sprintf("**告警主题: %s**\n\n**告警详情**: %s", altermsg.Alerts[id].Annotations["summary"], altermsg.Alerts[id].Annotations["description"]),
+			},
+		}, {
+			"tag": "hr",
+		}, {
+			"tag": "div",
+			"text": module.AlterCon{
+				Tag:     "lark_md",
+				Content: fmt.Sprintf("**故障时间**:%s \n**恢复时间**:%s ", altermsg.Alerts[id].StartsAt, altermsg.Alerts[id].EndsAt),
+			},
+		}, {
+			"tag": "hr",
+		},
+	}
+
+	content := module.AlterContent{
+		Config:   headconfig,
+		Header:   headconfig2,
+		Elements: headconfig3,
+	}
+	contentbyte, err := json.Marshal(content)
+	if err != nil {
+		zaplog.Sugar.Errorf("json解析错误", zap.Error(err))
+		return "", err
+	}
+	return string(contentbyte), nil
+
 }
