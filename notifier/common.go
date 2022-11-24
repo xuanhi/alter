@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -19,15 +20,28 @@ var (
 	TenantAccessTokenURL = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
 	GetChatId            = "https://open.feishu.cn/open-apis/im/v1/chats?page_size=20"
 	SendMsgUrl           = "https://open.feishu.cn/open-apis/im/v1/messages"
+	AppID                string
+	Secret               string
 )
 
 // GetTenantAccessToken get tenant access token for app
 // Refer to: https://open.feishu.cn/document/ukTMukTMukTM/ukDNz4SO0MjL5QzM/auth-v3/auth/tenant_access_token_internal
 func GetTenantAccessToken(ctx context.Context) (string, error) {
+	AppID = os.Getenv("AppID")
+	Secret = os.Getenv("Secret")
+	//zaplog.Sugar.Infof("系统环境变量%v", os.Environ())
+	if AppID == "" || Secret == "" {
+		AppID = "cli_a3f3305dc1f9d013"
+		Secret = "Ud5TZ38Sh6u1XUBfd4xOhhqClgoFf68l"
+		zaplog.Sugar.Infof("使用测试密钥AppID: %s,Secret: %s", AppID, Secret)
+	} else {
+		zaplog.Sugar.Infof("密钥AppID: %s,Secret: %s", AppID, Secret)
+	}
+
 	cli := &http.Client{}
 	reqBody := module.TenantAccessTokenRequest{
-		APPID:     "cli_a3f3305dc1f9d013",
-		APPSecret: "Ud5TZ38Sh6u1XUBfd4xOhhqClgoFf68l",
+		APPID:     AppID,
+		APPSecret: Secret,
 	}
 
 	reqBytes, err := json.Marshal(reqBody)
@@ -174,11 +188,16 @@ func SendAlterMsg(ctx context.Context, chatID, altermsg string) (*module.Message
 
 // 告警消息卡片制作
 func AlterMsgCard(altermsg module.Notification, id int) (string, error) {
+	status := "red"
+	if altermsg.Alerts[id].Status == "resolved" {
+		status = "green"
+	}
+
 	headconfig := map[string]bool{
 		"wide_screen_mod": true,
 	}
 	headconfig2 := map[string]interface{}{
-		"template": "red",
+		"template": status,
 		"title": module.AlterCon{
 			Content: fmt.Sprintf("🔺%s  alertname:%s", altermsg.Alerts[id].Status, altermsg.Alerts[id].Labels["alertname"]),
 			Tag:     "plain_text",
@@ -197,7 +216,7 @@ func AlterMsgCard(altermsg module.Notification, id int) (string, error) {
 			"tag": "div",
 			"text": module.AlterCon{
 				Tag: "lark_md",
-				Content: fmt.Sprintf("**当前时间：%s**\n**告警类型**: %s\n**告警级别**: %s\n**故障节点**: %s",
+				Content: fmt.Sprintf("**当前时间：%s**\n**告警类型:** %s\n**告警级别**: %s\n**故障节点:** %s",
 					time.Now().Format("2006-01-02 15:04:05"), altermsg.Alerts[id].Labels["alertname"], altermsg.Alerts[id].Labels["severity"], altermsg.Alerts[id].Labels["instance"]),
 			},
 		}, {
@@ -207,7 +226,7 @@ func AlterMsgCard(altermsg module.Notification, id int) (string, error) {
 			"text": module.AlterCon{
 				Tag: "lark_md",
 				//				Content: strings.Join(lablecontent, "\n"),
-				Content: fmt.Sprintf("**告警主题: %s**\n\n**告警详情**: %s", altermsg.Alerts[id].Annotations["summary"], altermsg.Alerts[id].Annotations["description"]),
+				Content: fmt.Sprintf("**告警主题: %s**\n\n**告警详情:** %s", altermsg.Alerts[id].Annotations["summary"], altermsg.Alerts[id].Annotations["description"]),
 			},
 		}, {
 			"tag": "hr",
@@ -215,7 +234,7 @@ func AlterMsgCard(altermsg module.Notification, id int) (string, error) {
 			"tag": "div",
 			"text": module.AlterCon{
 				Tag:     "lark_md",
-				Content: fmt.Sprintf("**故障时间**:%s \n**恢复时间**:%s ", altermsg.Alerts[id].StartsAt, altermsg.Alerts[id].EndsAt),
+				Content: fmt.Sprintf("**故障时间:** %s \n**恢复时间:** %s ", altermsg.Alerts[id].StartsAt.Add(8*time.Hour).Format("2006-01-02 15:04:05"), altermsg.Alerts[id].EndsAt.Add(8*time.Hour).Format("2006-01-02 15:04:05")),
 			},
 		}, {
 			"tag": "hr",

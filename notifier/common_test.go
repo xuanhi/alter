@@ -3,6 +3,7 @@ package notifier
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -49,9 +50,21 @@ func TestAlterMsgCard(t *testing.T) {
 	//formatTimestr := "02 Jan 2006 15:04:05 GMT"
 	formate := "2006-01-02 15:04:05"
 	//    DateFmt:="2006-01-02"
-
-	reltime, _ := time.Parse(formate, "2022-11-22 05:21:50.432 +0000 UTC")
-	fmt.Println(reltime.Format(formate))
+	//2022-11-22 05:21:50.432 +0000 UTC
+	//reltime, err := time.Parse(formate, "2022-11-22 05:21:50.432")
+	loc, _ := time.LoadLocation("Europe/Berlin")
+	reltime2, err := time.ParseInLocation(formate, "2022-11-22 05:21:50.432", loc)
+	if err != nil {
+		fmt.Println("错误", err)
+		t.Fail()
+	}
+	//fmt.Println(reltime.Format(formate))
+	fmt.Println(reltime2.Format(formate))
 	//start, _ := time.Parse(formate, "2022-11-22 05:21:50.432 +0000 UTC")
 	//fmt.Println(start.Add(8 * time.Hour).String())
+}
+
+func TestABC(t *testing.T) {
+	fmt.Println("==", os.Getenv("AppID"))
+
 }
