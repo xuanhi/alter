@@ -33,6 +33,16 @@ func TestGetChatIdByfirst(t *testing.T) {
 	fmt.Println("我的chat_id:", chat_id)
 }
 
+func TestGetChatIdByName(t *testing.T) {
+	zaplog.InitLogger()
+	ctx := context.Background()
+	chat_id, err := GetChatIdByName(ctx, "线上服务器警报群1")
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Println("我的chat_id:", chat_id)
+}
+
 func TestSendAlterMsg(t *testing.T) {
 	zaplog.InitLogger()
 	ctx := context.Background()

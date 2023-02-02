@@ -1,6 +1,6 @@
 FROM ubuntu:22.04
 MAINTAINER 1757314827@qq.com
-ENV AppID=cli_a3f3305dc1f9d013 Secret=Ud5TZ38Sh6u1XUBfd4xOhhqClgoFf68l
+ENV AppID=*** Secret=***
 RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 RUN apt-get update && apt-get install -y ca-certificates
 WORKDIR /feishu

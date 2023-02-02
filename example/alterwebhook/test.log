@@ -1,5 +1,0 @@
-2022-11-24T09:53:12.882+0800	INFO	notifier/common.go:80	使用测试密钥AppID: cli_a3f3305dc1f9d013,Secret: Ud5TZ38Sh6u1XUBfd4xOhhqClgoFf68l
-2022-11-24T09:53:13.089+0800	INFO	notifier/common.go:80	{"code":0,"expire":7199,"msg":"ok","tenant_access_token":"t-g104bo9RLYJ7H6DRKNPBWEGRKAF3QYHJ7RIBVWV6"}
-2022-11-24T09:53:13.368+0800	INFO	alterwebhook/main.go:74	获取到chat_id数组,返回第一个chat_id : oc_c3c09fe9ac4a8cac3995227476889d5b -- 群名字: 线上服务器警报群
-2022-11-24T09:53:13.368+0800	INFO	runtime/proc.go:250	获取到群id:oc_c3c09fe9ac4a8cac3995227476889d5b
-2022-11-24T09:53:13.368+0800	INFO	runtime/proc.go:250	Listening...

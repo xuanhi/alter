@@ -29,13 +29,14 @@ func getEncoder() zapcore.Encoder {
 	encoderConfig := zap.NewProductionEncoderConfig()
 	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	//设置日志级别为大写
-	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
+	encoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	return zapcore.NewConsoleEncoder(encoderConfig)
 }
 
 func getLogWriter() zapcore.WriteSyncer {
-	file, _ := os.Create("./test.log")
+	//file, _ := os.Create("./test.log")
 	// 利用io.MultiWriter支持文件和终端两个输出目标
-	ws := io.MultiWriter(file, os.Stdout)
+	//ws := io.MultiWriter(file, os.Stdout)
+	ws := io.MultiWriter(os.Stdout)
 	return zapcore.AddSync(ws)
 }

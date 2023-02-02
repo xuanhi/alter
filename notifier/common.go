@@ -117,6 +117,99 @@ func GetChatIdByfirst(ctx context.Context) string {
 	return ChatIdDatas.Data.Items[0].Chat_id
 }
 
+// 获取机器人所在群的详细信息,返回所有ChatId
+func GetChatIdItems(ctx context.Context) (*module.ChatIdItems, error) {
+	token, err := GetTenantAccessToken(ctx)
+	if err != nil {
+		zaplog.Sugar.Errorln("failed to get tenant access token")
+		return nil, err
+	}
+	cli := &http.Client{}
+
+	req, err := http.NewRequest("GET", GetChatId, nil)
+	if err != nil {
+		zaplog.Sugar.Errorln("get chatid failed", err)
+		return nil, err
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	resp, err := cli.Do(req)
+	if err != nil {
+		zaplog.Sugar.Errorln("获取群id失败", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		zaplog.Sugar.Errorln("读取resp body 失败", err)
+		return nil, err
+	}
+
+	ChatIdDatas := &module.ChatIdDatas{}
+	err = json.Unmarshal(body, ChatIdDatas)
+	if err != nil {
+		zaplog.Sugar.Errorln("json 解析错误", err)
+		return nil, err
+	}
+	if ChatIdDatas.Code != 0 {
+		zaplog.Sugar.Warnf("没能获取到群数据,code:%v,msg:%v", ChatIdDatas.Code, ChatIdDatas.Msg)
+	}
+
+	//zaplog.Sugar.Infof("获取到chat_id数组,返回第一个chat_id : %v -- 群名字: %v", ChatIdDatas.Data.Items[0].Chat_id, ChatIdDatas.Data.Items[0].Name)
+	zaplog.Sugar.Infof("当前总共有 %d 个群", len(ChatIdDatas.Data.Items))
+	return &ChatIdDatas.Data, nil
+}
+
+// 根据群名称获取群chatid,没有返回为空
+func GetChatIdByName(ctx context.Context, name string) ([]string, error) {
+	items, err := GetChatIdItems(ctx)
+	if err != nil {
+		zaplog.Sugar.Errorf("不能获取所有的群的信息")
+		return nil, err
+	}
+	chatid := make([]string, 0)
+	for _, v := range items.Items {
+		if v.Name == name {
+			chatid = append(chatid, v.Chat_id)
+			continue
+		}
+	}
+	if len(chatid) == 0 {
+		zaplog.Sugar.Infof("没有发现这个群")
+	}
+
+	return chatid, nil
+}
+
+// 指定群名称发送消息到飞书
+func SendAlterMsgByName(ctx context.Context, name, altermsg string) error {
+	chatids, err := GetChatIdByName(ctx, name)
+	if err != nil {
+		zaplog.Sugar.Errorf("通过名字获取chatid遇错")
+		return err
+	}
+	for _, v := range chatids {
+		_, err = SendAlterMsg(ctx, v, altermsg)
+		if err != nil {
+			zaplog.Sugar.Errorf("发送出错:%v", err)
+		}
+		zaplog.Sugar.Infof("chatid:%s,群:%s 发送成功", v, name)
+	}
+	return nil
+}
+
+// 有多个chatid一起发送消息
+func SendAlterMsgWithMutil(ctx context.Context, chatids module.ChatIdItems, altermsg string) {
+	for _, v := range chatids.Items {
+		_, err := SendAlterMsg(ctx, v.Chat_id, altermsg)
+		if err != nil {
+			zaplog.Sugar.Errorf("发生消息失败,chatid:%s,群:%s,err: %v", v.Chat_id, v.Name, err)
+		}
+		zaplog.Sugar.Infof("发送消息到飞书成功,chatid:%s,群:%s", v.Chat_id, v.Name)
+	}
+
+}
+
 // 发送告警消息
 func SendAlterMsg(ctx context.Context, chatID, altermsg string) (*module.MessageItem, error) {
 	token, err := GetTenantAccessToken(ctx)
