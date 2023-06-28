@@ -48,6 +48,10 @@ func alertWebhookReferName(w http.ResponseWriter, r *http.Request) {
 		//zaplog.Sugar.Info("notification:", notification)
 
 		zaplog.Sugar.Infof("当前有%d个告警", len(notification.Alerts))
+		token, err := notifier.GetTenantAccessToken(ctx)
+		if err != nil {
+			zaplog.Sugar.Errorln("failed to get tenant access token", err)
+		}
 
 		if clustername == "all" {
 			chatitem, err := notifier.GetChatIdItems(ctx)
@@ -63,7 +67,7 @@ func alertWebhookReferName(w http.ResponseWriter, r *http.Request) {
 				}
 				// cha_id oc_c3c09fe9ac4a8cac3995227476889d5b
 
-				notifier.SendAlterMsgWithMutil(ctx, *chatitem, text)
+				notifier.SendAlterMsgWithMutilBytoken(ctx, *chatitem, text, token)
 
 			}
 		} else {
@@ -75,7 +79,7 @@ func alertWebhookReferName(w http.ResponseWriter, r *http.Request) {
 				}
 				// cha_id oc_c3c09fe9ac4a8cac3995227476889d5b
 
-				err = notifier.SendAlterMsgByName(ctx, clustername, text)
+				err = notifier.SendAlterMsgByNameAndtoken(ctx, clustername, text, token)
 				if err != nil {
 					zaplog.Sugar.Errorf("通过名字没有发现chatid:%v", err)
 					break
@@ -100,16 +104,22 @@ func alterWebhook(w http.ResponseWriter, r *http.Request) {
 			zaplog.Sugar.Errorln("Read failed", err)
 		}
 		defer r.Body.Close()
-		fmt.Println("json:", string(b))
+		zaplog.Sugar.Infoln("获取到json数据: ", string(b))
+		//fmt.Println("json:", string(b))
 		notification := &module.Notification{}
 		err = json.Unmarshal(b, notification)
 		if err != nil {
 			zaplog.Sugar.Errorln("json format error:", err)
+			return
 		}
 
 		//zaplog.Sugar.Info("notification:", notification)
 
 		zaplog.Sugar.Infof("当前有%d个告警", len(notification.Alerts))
+		token, err := notifier.GetTenantAccessToken(ctx)
+		if err != nil {
+			zaplog.Sugar.Errorln("failed to get tenant access token", err)
+		}
 
 		for i := 0; i < len(notification.Alerts); i++ {
 			text, err := notifier.AlterMsgCard(*notification, i)
@@ -118,7 +128,7 @@ func alterWebhook(w http.ResponseWriter, r *http.Request) {
 				zaplog.Sugar.Errorf("消息卡片制作失败", zap.Error(err))
 			}
 			// cha_id oc_c3c09fe9ac4a8cac3995227476889d5b
-			_, err = notifier.SendAlterMsg(ctx, ChatID, text)
+			_, err = notifier.SendAlterMsgBytoken(ctx, ChatID, text, token)
 
 			if err != nil {
 				zaplog.Sugar.Errorf("发送飞书消息错误", zap.Error(err))

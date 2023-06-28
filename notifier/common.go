@@ -22,6 +22,7 @@ var (
 	SendMsgUrl           = "https://open.feishu.cn/open-apis/im/v1/messages"
 	AppID                string
 	Secret               string
+	EncryptKey           string
 )
 
 // GetTenantAccessToken get tenant access token for app
@@ -198,10 +199,39 @@ func SendAlterMsgByName(ctx context.Context, name, altermsg string) error {
 	return nil
 }
 
+// 指定群名称发送消息到飞书参数带token
+func SendAlterMsgByNameAndtoken(ctx context.Context, name, altermsg, token string) error {
+	chatids, err := GetChatIdByName(ctx, name)
+	if err != nil {
+		zaplog.Sugar.Errorf("通过名字获取chatid遇错")
+		return err
+	}
+	for _, v := range chatids {
+		_, err = SendAlterMsgBytoken(ctx, v, altermsg, token)
+		if err != nil {
+			zaplog.Sugar.Errorf("发送出错:%v", err)
+		}
+		zaplog.Sugar.Infof("chatid:%s,群:%s 发送成功", v, name)
+	}
+	return nil
+}
+
 // 有多个chatid一起发送消息
 func SendAlterMsgWithMutil(ctx context.Context, chatids module.ChatIdItems, altermsg string) {
 	for _, v := range chatids.Items {
 		_, err := SendAlterMsg(ctx, v.Chat_id, altermsg)
+		if err != nil {
+			zaplog.Sugar.Errorf("发生消息失败,chatid:%s,群:%s,err: %v", v.Chat_id, v.Name, err)
+		}
+		zaplog.Sugar.Infof("发送消息到飞书成功,chatid:%s,群:%s", v.Chat_id, v.Name)
+	}
+
+}
+
+// 有多个chatid一起发送消息参数带token
+func SendAlterMsgWithMutilBytoken(ctx context.Context, chatids module.ChatIdItems, altermsg, token string) {
+	for _, v := range chatids.Items {
+		_, err := SendAlterMsgBytoken(ctx, v.Chat_id, altermsg, token)
 		if err != nil {
 			zaplog.Sugar.Errorf("发生消息失败,chatid:%s,群:%s,err: %v", v.Chat_id, v.Name, err)
 		}
@@ -217,6 +247,121 @@ func SendAlterMsg(ctx context.Context, chatID, altermsg string) (*module.Message
 		zaplog.Sugar.Errorln("failed to get tenant access token", err)
 		return nil, err
 	}
+	cli := &http.Client{}
+
+	MessageReques := struct {
+		ReceiveID string `json:"receive_id"`
+		Content   string `json:"content"`
+		MsgType   string `json:"msg_type"`
+	}{
+		ReceiveID: chatID,
+		Content:   altermsg,
+		MsgType:   "interactive",
+	}
+
+	reqBytes, err := json.Marshal(MessageReques)
+
+	if err != nil {
+		zaplog.Sugar.Errorln("json 解析错误", err)
+		return nil, err
+	}
+	req, err := http.NewRequest("POST", SendMsgUrl, strings.NewReader(string(reqBytes)))
+	if err != nil {
+		zaplog.Sugar.Errorf("new request failed")
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	q := req.URL.Query()
+	q.Add("receive_id_type", "chat_id")
+	req.URL.RawQuery = q.Encode()
+
+	var logID string
+	resp, err := cli.Do(req)
+
+	if err != nil {
+		zaplog.Sugar.Errorf("create message failed, err=%v", err)
+		return nil, err
+	}
+	if resp != nil && resp.Header != nil {
+		logID = resp.Header.Get("x-tt-logid")
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	zaplog.Sugar.Infoln("data: ", string(body))
+	if err != nil {
+		zaplog.Sugar.Errorln("read body failed")
+		return nil, err
+	}
+	createMessageResp := &module.CreateMessageResponse{}
+	err = json.Unmarshal(body, createMessageResp)
+	if err != nil {
+		zaplog.Sugar.Errorf("failed to unmarshal")
+		return nil, err
+	}
+	if createMessageResp.Code != 0 {
+		zaplog.Sugar.Errorf("failed to create message, code: %v, msg: %v, log_id: %v", createMessageResp.Code, createMessageResp.Message, logID)
+		return nil, fmt.Errorf("create message failed")
+	}
+	zaplog.Sugar.Infof("succeed create message, msg_id: %v", createMessageResp.Data.MessageID)
+	return createMessageResp.Data, nil
+}
+
+func SendMessage(ctx context.Context, token string, createReq *module.CreateMessageRequest) (*module.MessageItem, error) {
+	cli := &http.Client{}
+	reqBytes, err := json.Marshal(createReq)
+	if err != nil {
+		zaplog.Sugar.Errorln("json 解析错误", err)
+		return nil, err
+	}
+	req, err := http.NewRequest("POST", SendMsgUrl, strings.NewReader(string(reqBytes)))
+	if err != nil {
+		zaplog.Sugar.Errorf("new request failed")
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	q := req.URL.Query()
+	q.Add("receive_id_type", "chat_id")
+	req.URL.RawQuery = q.Encode()
+
+	var logID string
+	resp, err := cli.Do(req)
+
+	if err != nil {
+		zaplog.Sugar.Errorf("create message failed, err=%v", err)
+		return nil, err
+	}
+	if resp != nil && resp.Header != nil {
+		logID = resp.Header.Get("x-tt-logid")
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	zaplog.Sugar.Infoln("data: ", string(body))
+	if err != nil {
+		zaplog.Sugar.Errorln("read body failed")
+		return nil, err
+	}
+	createMessageResp := &module.CreateMessageResponse{}
+	err = json.Unmarshal(body, createMessageResp)
+	if err != nil {
+		zaplog.Sugar.Errorf("failed to unmarshal")
+		return nil, err
+	}
+	if createMessageResp.Code != 0 {
+		zaplog.Sugar.Errorf("failed to create message, code: %v, msg: %v, log_id: %v", createMessageResp.Code, createMessageResp.Message, logID)
+		return nil, fmt.Errorf("create message failed")
+	}
+	zaplog.Sugar.Infof("succeed create message, msg_id: %v", createMessageResp.Data.MessageID)
+	return createMessageResp.Data, nil
+}
+
+// 发送告警消息参数带token
+func SendAlterMsgBytoken(ctx context.Context, chatID, altermsg, token string) (*module.MessageItem, error) {
 	cli := &http.Client{}
 
 	MessageReques := struct {
