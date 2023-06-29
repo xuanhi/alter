@@ -102,6 +102,26 @@ docker run --name feishu -d -p 5001:5001 -e AppID=*** -e Secret=*** --restart=al
 
 将AppID和Secret 替换为自己的值
 
+## 设置与机器人交互的事件功能
+
+说明：飞书需要将事件推送到此应用程序，因此，此应用程序需要部署到公网上。如果是内网环境，也可以使用https://ngrok.com/download 做内网穿透，建议用作测试。
+
+### 快速启动：
+
+```bash
+docker run --name feishu -d -p 5001:5001 -e AppID=*** -e Secret=*** -e EncryptKey=*** --restart=always xianhuaihai/feishu-alpine
+```
+
+### 飞书后台配置
+
+![1688023206616](image/README/1688023206616.png)
+
+请求地址：http://公网IP:5001/webhook/event
+
+![1688023306571](image/README/1688023306571.png)
+
+此功能可以用来判断程序有没有在运行。
+
 ## 效果图
 
 ![1675317545198](image/README/1675317545198.png)
