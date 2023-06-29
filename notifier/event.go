@@ -9,8 +9,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.xuanhi/alter/module"
@@ -21,8 +22,15 @@ func ReceiveEvent(ctx context.Context) func(http.ResponseWriter, *http.Request) 
 	return func(w http.ResponseWriter, r *http.Request) {
 		zaplog.Sugar.Infof("当前请求方法: %s", r.Method)
 		if r.Method == "POST" {
+			EncryptKey = os.Getenv("EncryptKey")
+			if EncryptKey == "" {
+				EncryptKey = "xianhuaihai123456"
+				zaplog.Sugar.Infof("使用测试EncryptKey %s", EncryptKey)
+			} else {
+				zaplog.Sugar.Infof("EncryptKey: %s", EncryptKey)
+			}
 			var req = &module.ReceiveEventEncrypt{}
-			b, err := ioutil.ReadAll(r.Body)
+			b, err := io.ReadAll(r.Body)
 			if err != nil {
 				zaplog.Sugar.Errorln("Read failed", err)
 			}
@@ -38,9 +46,10 @@ func ReceiveEvent(ctx context.Context) func(http.ResponseWriter, *http.Request) 
 				zaplog.Sugar.Errorf("decrypt error: %v", err)
 				return
 			}
-			zaplog.Sugar.Infof("receive decrypt event: %v", decryptStr)
+			zaplog.Sugar.Infof("接收解密后的事件数据: %v", decryptStr)
 			decryptToken := &module.DecryptToken{}
 			err = json.Unmarshal([]byte(decryptStr), decryptToken)
+			zaplog.Sugar.Infof("获取Challenge: %v", decryptToken)
 			if err != nil {
 				zaplog.Sugar.Errorf("Unmarshal failed again :%v", err)
 				return

@@ -18,10 +18,10 @@ func HandleReceiveMessageEvent(ctx context.Context, event *module.ReceiveMessage
 	}
 	switch msg.MessageType {
 	case "text":
-		if strings.Contains(msg.Content, "/solve") {
+		if strings.Contains(msg.Content, "/天王盖地虎") {
 			createMsgRequest := &module.CreateMessageRequest{
 				ReceiveID: chatID,
-				Content:   "{\"text\":\"问题已解决，辛苦了 \\n\"}",
+				Content:   "{\"text\":\"宝塔镇河妖 \\n\"}",
 				MsgType:   "text",
 			}
 			resp, err := SendMessage(ctx, token, createMsgRequest)
@@ -32,10 +32,10 @@ func HandleReceiveMessageEvent(ctx context.Context, event *module.ReceiveMessage
 			zaplog.Sugar.Infof("succeed send msg, msg_id: %v", resp.MessageID)
 		}
 	case "post":
-		if strings.Contains(msg.Content, "/solve") {
+		if strings.Contains(msg.Content, "/天王盖地虎") {
 			createMsgRequest := &module.CreateMessageRequest{
 				ReceiveID: chatID,
-				Content:   "{\"text\":\"问题已解决，辛苦了 \\n\"}",
+				Content:   "{\"text\":\"宝塔镇河妖 \\n\"}",
 				MsgType:   "text",
 			}
 			resp, err := SendMessage(ctx, token, createMsgRequest)

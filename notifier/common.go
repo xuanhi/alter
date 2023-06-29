@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -62,7 +62,7 @@ func GetTenantAccessToken(ctx context.Context) (string, error) {
 
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
@@ -98,7 +98,7 @@ func GetChatIdByfirst(ctx context.Context) string {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		zaplog.Sugar.Errorln("读取resp body 失败", err)
 		return ""
@@ -140,7 +140,7 @@ func GetChatIdItems(ctx context.Context) (*module.ChatIdItems, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		zaplog.Sugar.Errorln("读取resp body 失败", err)
 		return nil, err
@@ -289,7 +289,7 @@ func SendAlterMsg(ctx context.Context, chatID, altermsg string) (*module.Message
 	}
 
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	zaplog.Sugar.Infoln("data: ", string(body))
 	if err != nil {
 		zaplog.Sugar.Errorln("read body failed")
@@ -340,7 +340,7 @@ func SendMessage(ctx context.Context, token string, createReq *module.CreateMess
 	}
 
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	zaplog.Sugar.Infoln("data: ", string(body))
 	if err != nil {
 		zaplog.Sugar.Errorln("read body failed")
@@ -404,7 +404,7 @@ func SendAlterMsgBytoken(ctx context.Context, chatID, altermsg, token string) (*
 	}
 
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	zaplog.Sugar.Infoln("data: ", string(body))
 	if err != nil {
 		zaplog.Sugar.Errorln("read body failed")

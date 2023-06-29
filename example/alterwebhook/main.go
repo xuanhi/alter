@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -32,7 +32,7 @@ func alertWebhookReferName(w http.ResponseWriter, r *http.Request) {
 	clustername := vars["name"]
 	zaplog.Sugar.Infof("当前请求方法: %s", r.Method)
 	if r.Method == "POST" {
-		b, err := ioutil.ReadAll(r.Body)
+		b, err := io.ReadAll(r.Body)
 
 		if err != nil {
 			zaplog.Sugar.Errorln("Read failed", err)
@@ -98,7 +98,7 @@ func alertWebhookReferName(w http.ResponseWriter, r *http.Request) {
 func alterWebhook(w http.ResponseWriter, r *http.Request) {
 	zaplog.Sugar.Infof("当前请求方法: %s", r.Method)
 	if r.Method == "POST" {
-		b, err := ioutil.ReadAll(r.Body)
+		b, err := io.ReadAll(r.Body)
 
 		if err != nil {
 			zaplog.Sugar.Errorln("Read failed", err)
@@ -164,6 +164,7 @@ func main() {
 		fmt.Fprintf(w, "items: %v\n", items.Items)
 	})
 	r.HandleFunc("/cluster/{name}", alertWebhookReferName)
+	r.HandleFunc("/webhook/event", notifier.ReceiveEvent(ctx))
 
 	zaplog.Sugar.Info("Listening...")
 
